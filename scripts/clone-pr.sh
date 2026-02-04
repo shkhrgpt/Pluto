@@ -29,6 +29,10 @@ BASE_BRANCH="base-$BRANCH_NAME"
 
 echo "Cloning PR #$PR_NUMBER from $SOURCE_REPO..."
 
+# Stash any local changes (including untracked files) to avoid checkout conflicts
+echo "Stashing local changes..."
+git stash --include-untracked
+
 # Get all PR data in one call
 PR_DATA=$(gh pr view "$PR_NUMBER" --repo "$SOURCE_REPO" --json commits,title,body,closingIssuesReferences)
 
@@ -82,10 +86,11 @@ for commit in "${COMMITS[@]}"; do
   if ! git cherry-pick "$commit"; then
     echo "Error: Merge conflict detected. Aborting and cleaning up..."
     git cherry-pick --abort
-    git checkout main
+    git checkout -f main
     git branch -D "$BRANCH_NAME" 2>/dev/null || true
     git branch -D "$BASE_BRANCH" 2>/dev/null || true
     git push origin --delete "$BASE_BRANCH" 2>/dev/null || true
+    git stash pop 2>/dev/null || true
     exit 1
   fi
 done
@@ -129,7 +134,7 @@ gh pr close "$NEW_PR_URL"
 gh pr comment "$NEW_PR_URL" --body "@violetnspct e2e-test"
 
 # Cleanup: switch back to main and delete all temp branches
-git checkout main
+git checkout -f main
 git branch -D "temp-pr-$PR_NUMBER" 2>/dev/null || true
 git branch -D "$BRANCH_NAME" 2>/dev/null || true
 git branch -D "$BASE_BRANCH" 2>/dev/null || true
@@ -138,6 +143,10 @@ git branch -D "$BASE_BRANCH" 2>/dev/null || true
 echo "Cleaning up remote branches..."
 git push origin --delete "$BRANCH_NAME" 2>/dev/null || true
 git push origin --delete "$BASE_BRANCH" 2>/dev/null || true
+
+# Restore stashed changes
+echo "Restoring local changes..."
+git stash pop 2>/dev/null || true
 
 echo ""
 echo "Done! Cloned $COMMIT_COUNT commit(s)."
