@@ -131,7 +131,7 @@ fi
 
 # Close the PR and add comment for e2e testing
 gh pr close "$NEW_PR_URL"
-gh pr comment "$NEW_PR_URL" --body "@violetnspct e2e-test"
+gh pr comment "$NEW_PR_URL" --body "@violetnspct e2e-test all"
 
 # Cleanup: switch back to main and delete all temp branches
 git checkout -f main
